@@ -1,12 +1,49 @@
 import sqlite3
 from newspaper import Article
+from html.parser import HTMLParser
 import newspaper
-#  Lấy danh sách bài báo
-def get_all(query):
+
+webUrl = "https://thanhnien.vn/"
+
+
+#  Lấy danh sách bài báo && category
+def get_all(query,index):
     connection = sqlite3.connect("data/newsdb.db")
-    data = connection.execute(query).fetchall()
+    data = connection.execute(query).fetchmany(index)
     connection.close()
     return data
+
+
+# Lấy danh sách theo id
+def get_news_by_categoryId(category_id):
+    connection = sqlite3.connect("data/newsdb.db")
+    sql = """
+    SELECT id,
+           subject,
+           description,
+           image,
+           original_url,
+           category_id,
+           publish_date,
+           favorite
+      FROM news (
+               SELECT id,
+                      subject,
+                      description,
+                      image,
+                      original_url,
+                      category_id,
+                      publish_date,
+                      favorite
+                 FROM news
+           )
+     WHERE category_id = ?;
+    """
+
+    resultListNews = connection.execute(sql, (category_id, )).fetchall()
+    connection.close()
+    return resultListNews
+
 
 # Lấy danh sách theo id
 def get_news_by_id(news_id):
@@ -30,32 +67,70 @@ def get_news_by_id(news_id):
 # Lấy bài báo về dùng lib newspaper
 def add_news(conection, url, category_id):
     sql = """
-    INSERT INTO news(subject, description, image, original_url, category_id, publish_date)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO news(subject, description, image, original_url, category_id, publish_date, favorite)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     """
     article = Article(url)
     article.download()
     article.parse()
 
-    conection.execute(sql, (article.title, article.text, article.top_img, article.url, category_id, article.publish_date ))
+    conection.execute(sql, (article.title, article.text, article.top_img, article.url, category_id, article.publish_date, 'TRUE' ))
 
     conection.commit()
 
 
+# Doanh muc category
+def get_cat_id(url):
+    _cat_id = 0
+    if "/video/" in url:
+        _cat_id = 16
+    elif "/thoi-su/" in url:
+        _cat_id = 1
+    elif "/the-gioi/" in url:
+        _cat_id = 2
+    elif "/tai-chinh-kinh-doanh/" in url:
+        _cat_id = 3
+    elif "/doi-song/" in url:
+        _cat_id = 4
+    elif "/van-hoa/" in url:
+        _cat_id = 5
+    elif "/giai-tri/" in url:
+        _cat_id = 6
+    elif "/gioi-tre/" in url:
+        _cat_id = 7
+    elif "/giao-duc/" in url:
+        _cat_id = 8
+    elif "/the-thao/" in url:
+        _cat_id = 9
+    elif "/suc-khoe/" in url:
+        _cat_id = 10
+    elif "/du-lich/" in url:
+        _cat_id = 11
+    elif "/cong-nghe/" in url:
+        _cat_id = 12
+    elif "/xe/" in url:
+        _cat_id = 13
+    elif "/game/" in url:
+        _cat_id = 14
+    elif "thoitrangtre." in url:
+        _cat_id = 15
+    else:
+        _cat_id = 17
+
+    return _cat_id
+
+
+
 # Lấy bài báo cho các doanh mục
 def get_news_url():
-    categories = get_all("SELECT * FROM category")
     connection = sqlite3.connect("data/newsdb.db")
-    for cat in categories:
-        cat_id = cat[0]
-        url = cat[2]
-        print(url)
-        cat_paper = newspaper.build(url)
-        for article in cat_paper.articles:
-            try:
-                print("=====", article.url)
-                add_news(connection, article.url, cat_id)
-            except Exception as ex:
+    cat_paper = newspaper.build(webUrl)
+    for article in cat_paper.articles:
+        try:
+            print("=====", article.url)
+            _cat_id = get_cat_id(article.url)
+            add_news(connection, article.url, _cat_id)
+        except Exception as ex:
                 print("ERROR " + str(ex))
                 pass
 

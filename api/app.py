@@ -3,14 +3,18 @@ import utils
 app = Flask(__name__)
 
 
+
+
+
+
 #  Lấy toàn bộ danh sách category
 @app.route("/categories", methods=["GET"])
 def get_categories():
-    rows = utils.get_all("SELECT * FROM category")
+    rows = utils.get_all("SELECT * FROM category",20)
     data = []
     for row in rows:
         data.append({
-            "id": row[0],
+            "id":  row[0],
             "name": row[1],
             "url": row[2],
         })
@@ -19,23 +23,48 @@ def get_categories():
     })
 
 
-#  Lấy toàn bộ danh sách bài viết
+#  Lấy toàn bộ danh sách bài viết , lấy 10 bài mới nhất
 @app.route("/news", methods=["GET"])
 def get_news():
-    rows = utils.get_all("SELECT * FROM news")
+    rows = utils.get_all("SELECT * FROM news", 10)
     data = []
     for row in rows:
+        favorite = False
+        if row[7] == 1:
+            favorite = True
         data.append({
             "id": row[0],
             "subject": row[1],
-            "description": row[2],
             "image": row[3],
-            "original_url": row[4],
-            "publish_date": row[6]
+            "publish_date": row[6],
+            "favorite": favorite
         })
     return jsonify({
         "news": data
     })
+
+
+# Lấy danh sách bài viết theo categoryId
+@app.route("/newsbycategoryid/<int:category_id>", methods=["GET"])
+def get_news_by_category_id(category_id):
+    rows = utils.get_news_by_categoryId(category_id)
+    print(rows)
+    data = []
+    for row in rows:
+        favorite = False
+        if row[7] == 1:
+            favorite = True
+        data.append({
+            "id": row[0],
+            "subject": row[1],
+            "image": row[3],
+            "publish_date": row[6],
+            "favorite": favorite
+        })
+    return jsonify({
+        "news": data
+    })
+
 
 # Lấy dữ liệu chi tiết theo id
 @app.route("/news/<int:news_id>", methods=["GET"])
@@ -95,5 +124,5 @@ def insert_news():
 
 
 if __name__ == "__main__":
-    # utils.get_news_url()
+    utils.get_news_url()
     app.run()
